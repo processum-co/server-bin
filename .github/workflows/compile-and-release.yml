@@ -63,7 +63,7 @@ jobs:
         working-directory: source-repo
         run: |
           bun install --frozen-lockfile
-          bun test --timeout 15000
+          bun test --parallel=1 --timeout 15000
 
       - name: Compile Standalone Binaries
         working-directory: source-repo
