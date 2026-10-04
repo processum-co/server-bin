@@ -31,6 +31,8 @@ Este repositorio almacena y distribuye los artefactos compilados generados autom
 
 ```text
 server-bin/
+├── .github/workflows/
+│   └── compile-and-release.yml      # Pipeline CI que detecta cambios, compila y genera releases
 ├── .env.example                     # Plantilla de variables de entorno de produccion
 ├── .gitignore                       # Exclusion de archivos locales y temporales
 ├── Dockerfile                       # Definicion de contenedor basada en debian-slim
@@ -42,6 +44,17 @@ server-bin/
 └── systemd/
     └── processum-server.service     # Unidad de servicio systemd para servidores Linux
 ```
+
+---
+
+## Pipeline de Integracion Continua y Releases
+
+Este repositorio actua como el orquestador de construccion y publicacion de artefactos:
+
+1. **Deteccion de Cambios:** Mediante el evento `repository_dispatch` (o ejecucion manual `workflow_dispatch`), `server-bin` detecta cuando se actualiza el codigo en el repositorio privado `processum-co/server`.
+2. **Descarga Segura:** Clona el codigo privado utilizando el secreto `SERVER_SOURCE_TOKEN` (o `GH_PAT`).
+3. **Verificacion y Compilacion:** Ejecuta la suite de pruebas (`bun test`) y compila los binarios independientes para Linux x64, Linux ARM64 y Windows x64.
+4. **Publicacion de Release:** Crea automaticamente una publicacion en GitHub Releases con los binarios adjuntos y sus sumas de comprobacion SHA-256.
 
 ---
 

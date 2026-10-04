@@ -1,0 +1,115 @@
+name: Compile and Release Binaries
+
+on:
+  repository_dispatch:
+    types: [server-updated, server-release]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Nombre del release o tag (ej: v1.0.0)"
+        required: false
+        default: ""
+      source_ref:
+        description: "Rama o commit en processum-co/server a compilar"
+        required: false
+        default: "main"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Publish Releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calculate Release Tag and Source Ref
+        id: vars
+        run: |
+          if [ -n "${{ github.event.client_payload.tag }}" ]; then
+            TAG="${{ github.event.client_payload.tag }}"
+          elif [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          else
+            TAG="v$(date +'%Y.%m.%d').${{ github.run_number }}"
+          fi
+
+          if [ -n "${{ github.event.client_payload.ref }}" ]; then
+            SOURCE_REF="${{ github.event.client_payload.ref }}"
+          elif [ -n "${{ inputs.source_ref }}" ]; then
+            SOURCE_REF="${{ inputs.source_ref }}"
+          else
+            SOURCE_REF="main"
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "source_ref=${SOURCE_REF}" >> "$GITHUB_OUTPUT"
+          echo "Release Tag: ${TAG}"
+          echo "Source Ref: ${SOURCE_REF}"
+
+      - name: Checkout Private Source Repository
+        uses: actions/checkout@v4
+        with:
+          repository: processum-co/server
+          ref: ${{ steps.vars.outputs.source_ref }}
+          token: ${{ secrets.SERVER_SOURCE_TOKEN || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          path: source-repo
+
+      - name: Setup Bun Runtime
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Verify Source and Execute Test Suite
+        working-directory: source-repo
+        run: |
+          bun install --frozen-lockfile
+          bun test
+
+      - name: Compile Standalone Binaries
+        working-directory: source-repo
+        run: |
+          mkdir -p ../dist
+          echo "Compilando ejecutable para Linux x64..."
+          bun build --compile --minify --target=bun-linux-x64 ./src/server.ts --outfile ../dist/processum-server-linux-x64
+
+          echo "Compilando ejecutable para Linux ARM64..."
+          bun build --compile --minify --target=bun-linux-arm64 ./src/server.ts --outfile ../dist/processum-server-linux-arm64
+
+          echo "Compilando ejecutable para Windows x64..."
+          bun build --compile --minify --target=bun-windows-x64 ./src/server.ts --outfile ../dist/processum-server-windows-x64.exe
+
+      - name: Generate Checksums
+        working-directory: dist
+        run: |
+          sha256sum * > checksums.sha256
+          cat checksums.sha256
+
+      - name: Create GitHub Release in server-bin
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "Processum Server ${{ steps.vars.outputs.tag }}"
+          draft: false
+          prerelease: false
+          body: |
+            ## Distribucion Oficial de Binarios Ejecutables
+
+            Artefactos autocontenidos compilados directamente desde el repositorio privado `processum-co/server`.
+
+            ### Informacion de la Compilacion
+            - **Referencia del Codigo Fuente:** `${{ steps.vars.outputs.source_ref }}`
+            - **Numero de Ejecucion CI:** `${{ github.run_number }}`
+            - **Runtime Embebido:** Bun (Fastify + TypeScript)
+
+            ### Archivos Disponibles
+            - `processum-server-linux-x64`: Binario nativo para servidores Linux de 64 bits.
+            - `processum-server-linux-arm64`: Binario nativo para arquitecturas ARM (AWS Graviton, Raspberry Pi 4/5).
+            - `processum-server-windows-x64.exe`: Ejecutable para entornos Windows Server / Windows 10+.
+            - `checksums.sha256`: Sumas de verificacion SHA-256 para validacion de integridad.
+          files: |
+            dist/processum-server-linux-x64
+            dist/processum-server-linux-arm64
+            dist/processum-server-windows-x64.exe
+            dist/checksums.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
