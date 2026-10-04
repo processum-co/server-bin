@@ -1,0 +1,17 @@
+# Processum Server Binary Distribution - .gitignore
+
+# Environment files
+.env
+*.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Log directories
+logs/
+*.log
+
+# Temporary execution files
+*.tmp
+temp/

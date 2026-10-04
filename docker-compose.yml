@@ -1,0 +1,29 @@
+services:
+  server:
+    image: debian:bookworm-slim
+    container_name: processum-server
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - DATABASE_ENGINE=${DATABASE_ENGINE:-memory}
+      - JWT_SECRET=${JWT_SECRET:-supersecret_enterprise_jwt_token_change_in_production_min32chars}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SQLSERVER_HOST=${SQLSERVER_HOST:-localhost}
+      - SQLSERVER_PORT=${SQLSERVER_PORT:-1433}
+      - SQLSERVER_USER=${SQLSERVER_USER:-sa}
+      - SQLSERVER_PASSWORD=${SQLSERVER_PASSWORD:-}
+      - SQLSERVER_DATABASE=${SQLSERVER_DATABASE:-processum_judicial}
+      - POSTGRES_HOST=${POSTGRES_HOST:-localhost}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-processum_judicial}
+    volumes:
+      - ./bin:/app/bin:ro
+      - ./.env:/app/.env:ro
+    working_dir: /app
+    command: ["./bin/processum-server-linux-x64"]

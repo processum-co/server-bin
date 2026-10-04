@@ -1,0 +1,19 @@
+[Unit]
+Description=Processum Backend Judicial API Service
+After=network.target
+
+[Service]
+Type=simple
+User=processum
+Group=processum
+WorkingDirectory=/opt/processum
+ExecStart=/opt/processum/bin/processum-server-linux-x64
+EnvironmentFile=/opt/processum/.env
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
