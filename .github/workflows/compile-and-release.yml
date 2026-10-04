@@ -61,6 +61,9 @@ jobs:
 
       - name: Verify Source and Execute Test Suite
         working-directory: source-repo
+        env:
+          NODE_ENV: test
+          DB_ENGINE: memory
         run: |
           bun install --frozen-lockfile
           bun test --parallel=1 --timeout 15000
